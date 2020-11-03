@@ -143,8 +143,8 @@ skip_cat_entry:
     movq (%rdx, %rsi, 8), %r8   # pointer to handler
     movabs $idt_state_table, %rdx
     movq (%rdx, %rsi, 8), %rdx   # pointer to state
-	
-    
+
+		
 #ifdef NAUT_CONFIG_ENABLE_ASSERTS
     cmpq $256, %rsi
     jge irq_err
@@ -153,7 +153,32 @@ skip_cat_entry:
     jl irq_err
 #endif
 
+#ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
+	pushq %r8
+	pushq %rdi
+	pushq %rsi
+	pushq %rdx
+
+	subq $16, %rsp  # allocate 2 qwords for the fpu debug frame
+	movq %rsp, %rdi
+	callq nk_thread_push_irq_frame
+
+	addq $16, %rsp
+	popq %rdx
+	popq %rsi
+	popq %rdi
+	popq %r8
+	subq $16, %rsp
+#endif
+
     callq *%r8    # rdi = exp struct, rsi = irq num, rdx = state
+
+#ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
+	pushq %rax
+	callq nk_thread_pop_irq_frame
+	popq %rax
+	addq $16, %rsp
+#endif
 
     testq %rax, %rax
     jnz irq_err

@@ -265,6 +265,17 @@ put_cur_thread (nk_thread_t * t)
 }
 
 
+#ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
+
+struct thread_debug_fpu_frame {
+	struct thread_debug_fpu_frame *prev;
+	void *state;
+};
+void nk_thread_push_irq_frame(struct thread_debug_fpu_frame *);
+void nk_thread_pop_irq_frame(void);
+#endif /* NAUT_CONFIG_FPU_IRQ_DEBUG */
+
+
 #endif /* !__ASSEMBLER */
 
 #define SAVE_GPRS() \

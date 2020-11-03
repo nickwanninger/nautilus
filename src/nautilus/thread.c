@@ -1234,6 +1234,11 @@ nk_tls_test (void)
     nk_thread_start(tls_dummy, NULL, NULL, 1, TSTACK_DEFAULT, NULL, 1);
 }
 
+#ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
 
+void nk_thread_push_irq_frame(struct thread_debug_fpu_frame *frame) {
+}
 
-
+void nk_thread_pop_irq_frame(void) {
+}
+#endif

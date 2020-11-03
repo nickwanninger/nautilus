@@ -819,6 +819,7 @@ menu "Garbage Collection Options"
                     opt will be ignored if processor does not 
                     have avx512f registers.
 
+
   endmenu 
 endmenu
 
@@ -831,7 +832,17 @@ menu "Optimizations"
         Compiles the kernel to save FPU state on every context switch. 
         This is not strictly necessary if processors are not virtualized 
         (by the HRT).
-    
+
+
+    config FPU_IRQ_DEBUG
+              bool "Enable debugging of the FPU on (nested) irqs"
+              default false
+              depends on FPU_SAVE
+              help
+								Will do some extra logic at each irq to debug FPU usage within the
+								kernel and possibly eagerly/lazily save FPU state.
+
+
     config KICK_SCHEDULE
         bool "Kick cores with IPIs on scheduling events"
         default n
