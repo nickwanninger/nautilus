@@ -572,6 +572,7 @@ init (unsigned long mbd,
 #ifdef NAUT_CONFIG_WATCHDOG
     nk_watchdog_init(NAUT_CONFIG_WATCHDOG_DEFAULT_TIME_MS * 1000000UL);
 #endif
+
     
     nk_launch_shell("root-shell",0,0,0);
 

@@ -227,6 +227,10 @@ struct nk_thread {
     const void * tls[TLS_MAX_KEYS];
 
     uint8_t fpu_state[FPSTATE_SIZE] __align(FPSTATE_ALIGN);
+
+#ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
+		struct thread_debug_fpu_frame *irq_fpu_stack;
+#endif
 } ;
 
 // internal thread representations
@@ -266,10 +270,14 @@ put_cur_thread (nk_thread_t * t)
 
 
 #ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
-
 struct thread_debug_fpu_frame {
 	struct thread_debug_fpu_frame *prev;
 	void *state;
+	union {
+		struct {
+		};
+		unsigned long flags;
+	};
 };
 void nk_thread_push_irq_frame(struct thread_debug_fpu_frame *);
 void nk_thread_pop_irq_frame(void);

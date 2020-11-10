@@ -221,6 +221,23 @@ df_handler (excp_entry_t * excp,
 }
 
 
+#ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
+static int
+nm_handler (excp_entry_t * excp,
+            excp_vec_t vector,
+            addr_t unused)
+{
+	// reenable the FPU
+	ulong_t cr0 = read_cr0();
+	cr0 &= ~CR0_TS;
+	write_cr0(cr0);
+
+	printk("NM!\n");
+  return 0;
+}
+#endif
+
+
 static int
 pic_spur_int_handler (excp_entry_t * excp,
                       excp_vec_t vector,
@@ -464,7 +481,12 @@ setup_idt (void)
         ERROR_PRINT("Couldn't assign general protection fault handler\n");
         return -1;
     }
-
+#ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
+    if (idt_assign_entry(NM_EXCP, (ulong_t)nm_handler, 0) < 0) {
+        ERROR_PRINT("Couldn't assign 'Device not available' fault handler\n");
+        return -1;
+    }
+#endif
     if (idt_assign_entry(DF_EXCP, (ulong_t)df_handler, 0) < 0) {
         ERROR_PRINT("Couldn't assign double fault handler\n");
         return -1;

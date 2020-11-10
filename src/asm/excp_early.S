@@ -154,31 +154,22 @@ skip_cat_entry:
 #endif
 
 #ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
-	pushq %r8
+	subq $24, %rsp # allocate the frame struct
+	pushq %r8      # save important registers
 	pushq %rdi
 	pushq %rsi
 	pushq %rdx
 
-	subq $16, %rsp  # allocate 2 qwords for the fpu debug frame
-	movq %rsp, %rdi
+	leaq 32(%rsp), %rdi # address of frame struct after we pushed the regs
 	callq nk_thread_push_irq_frame
 
-	addq $16, %rsp
-	popq %rdx
+	popq %rdx # restore important regs
 	popq %rsi
 	popq %rdi
 	popq %r8
-	subq $16, %rsp
 #endif
 
     callq *%r8    # rdi = exp struct, rsi = irq num, rdx = state
-
-#ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
-	pushq %rax
-	callq nk_thread_pop_irq_frame
-	popq %rax
-	addq $16, %rsp
-#endif
 
     testq %rax, %rax
     jnz irq_err
@@ -187,9 +178,20 @@ skip_cat_entry:
     callq nk_irq_prof_exit
 #endif
 
+
+
     // we're back from the irq handler
-    // do we need to switch to someone else?
+    // do we need to switedh to someone else?
     callq nk_sched_need_resched
+
+#ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
+	pushq %rax
+	callq nk_thread_pop_irq_frame
+	popq %rax
+	addq $24, %rsp
+#endif
+
+
     testq %rax, %rax
     jz thr_return
     movq %rax, %rdi
@@ -283,7 +285,41 @@ skip_per_cpu_update1:
     movabs $idt_state_table, %rdx
     movq (%rdx, %rsi, 8), %rdx   # pointer to state
 
+#ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
+		cmpq $7, %rsi # NM_EXCP
+		je .skip_irq_save
+
+		subq $24, %rsp # allocate the frame struct
+		pushq %r8      # save important registers
+		pushq %rdi
+		pushq %rsi
+		pushq %rdx
+
+		leaq 32(%rsp), %rdi # address of frame struct after we pushed the regs
+		callq nk_thread_push_irq_frame
+
+		popq %rdx # restore important regs
+		popq %rsi
+		popq %rdi
+		popq %r8
+	.skip_irq_save:
+		pushq %rsi # the handler function can modify RSI
+#endif
+
     callq *%r8   # rdi = exp struct, rsi = irq num, rdx = state
+
+#ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
+		popq %rsi
+		cmpq $7, %rsi # NM_EXCP
+		je .skip_irq_restore
+
+		pushq %rax
+		callq nk_thread_pop_irq_frame
+		popq %rax
+		addq $24, %rsp
+	.skip_irq_restore:
+#endif
+
     testq %rax, %rax
     jnz excp_err
 

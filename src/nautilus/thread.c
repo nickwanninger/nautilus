@@ -166,6 +166,10 @@ _nk_thread_init (nk_thread_t * t,
 
     INIT_LIST_HEAD(&(t->children));
 
+#ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
+		t->irq_fpu_stack = NULL;
+#endif
+
     /* I go on my parent's child list if I'm not detached */
     if (parent && !is_detached) {
         list_add_tail(&(t->child_node), &(parent->children));
@@ -1237,8 +1241,29 @@ nk_tls_test (void)
 #ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
 
 void nk_thread_push_irq_frame(struct thread_debug_fpu_frame *frame) {
+	nk_thread_t *t = get_cur_thread();
+
+	// zero out the state and add it onto the stack
+	frame->state = NULL;
+	frame->prev = t->irq_fpu_stack;
+	t->irq_fpu_stack = frame;
+
+	return;
+
+	// disable floating point
+	ulong_t cr0 = read_cr0();
+	cr0 |= CR0_TS;
+	write_cr0(cr0);
 }
 
 void nk_thread_pop_irq_frame(void) {
+	nk_thread_t *t = get_cur_thread();
+
+	struct thread_debug_fpu_frame *f = t->irq_fpu_stack;
+	// Pop the entry off the list
+	t->irq_fpu_stack = f->prev;
+	if (f->state != NULL) {
+		printk("state is not null! %p\n", f->state);
+	}
 }
 #endif
