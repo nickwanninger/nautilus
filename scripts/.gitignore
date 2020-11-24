@@ -1,0 +1,8 @@
+basic/docproc
+basic/fixdep
+basic/split-include
+format_secs
+format_syms
+kconfig/conf
+kconfig/lxdialog/lxdialog
+kconfig/mconf

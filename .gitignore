@@ -7,3 +7,8 @@ tags
 *.syms
 *.bc
 *.ll
+
+include/config
+include/autoconf.h
+nautilus.secs
+.kconfig.d
