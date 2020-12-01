@@ -1238,10 +1238,17 @@ nk_tls_test (void)
     nk_thread_start(tls_dummy, NULL, NULL, 1, TSTACK_DEFAULT, NULL, 1);
 }
 
-#ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
+#ifdef NAUT_CONFIG_NESTED_IRQ_DEBUG
 
 void nk_thread_push_irq_frame(struct thread_debug_fpu_frame *frame) {
+	ASSERT(sizeof(struct thread_debug_fpu_frame) == 48);
+
+	memset(frame, 0, sizeof(*frame));
 	nk_thread_t *t = get_cur_thread();
+
+	ulong_t cr0 = read_cr0();
+
+	bool fpu_was_enabled = (cr0 & CR0_TS) != 0;
 
 	// zero out the state and add it onto the stack
 	frame->state = NULL;
@@ -1251,7 +1258,6 @@ void nk_thread_push_irq_frame(struct thread_debug_fpu_frame *frame) {
 	return;
 
 	// disable floating point
-	ulong_t cr0 = read_cr0();
 	cr0 |= CR0_TS;
 	write_cr0(cr0);
 }

@@ -153,8 +153,8 @@ skip_cat_entry:
     jl irq_err
 #endif
 
-#ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
-	subq $24, %rsp # allocate the frame struct
+#ifdef NAUT_CONFIG_NESTED_IRQ_DEBUG
+	subq $48, %rsp # allocate the frame struct
 	pushq %r8      # save important registers
 	pushq %rdi
 	pushq %rsi
@@ -184,11 +184,11 @@ skip_cat_entry:
     // do we need to switedh to someone else?
     callq nk_sched_need_resched
 
-#ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
+#ifdef NAUT_CONFIG_NESTED_IRQ_DEBUG
 	pushq %rax
 	callq nk_thread_pop_irq_frame
 	popq %rax
-	addq $24, %rsp
+	addq $48, %rsp
 #endif
 
 
@@ -285,11 +285,11 @@ skip_per_cpu_update1:
     movabs $idt_state_table, %rdx
     movq (%rdx, %rsi, 8), %rdx   # pointer to state
 
-#ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
+#ifdef NAUT_CONFIG_NESTED_IRQ_DEBUG
 		cmpq $7, %rsi # NM_EXCP
 		je .skip_irq_save
 
-		subq $24, %rsp # allocate the frame struct
+		subq $48, %rsp # allocate the frame struct
 		pushq %r8      # save important registers
 		pushq %rdi
 		pushq %rsi
@@ -308,7 +308,7 @@ skip_per_cpu_update1:
 
     callq *%r8   # rdi = exp struct, rsi = irq num, rdx = state
 
-#ifdef NAUT_CONFIG_FPU_IRQ_DEBUG
+#ifdef NAUT_CONFIG_NESTED_IRQ_DEBUG
 		popq %rsi
 		cmpq $7, %rsi # NM_EXCP
 		je .skip_irq_restore
@@ -316,7 +316,7 @@ skip_per_cpu_update1:
 		pushq %rax
 		callq nk_thread_pop_irq_frame
 		popq %rax
-		addq $24, %rsp
+		addq $48, %rsp
 	.skip_irq_restore:
 #endif
 

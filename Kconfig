@@ -834,15 +834,6 @@ menu "Optimizations"
         (by the HRT).
 
 
-    config FPU_IRQ_DEBUG
-              bool "Enable debugging of the FPU on (nested) irqs"
-              default false
-              depends on FPU_SAVE
-              help
-								Will do some extra logic at each irq to debug FPU usage within the
-								kernel and possibly eagerly/lazily save FPU state.
-
-
     config KICK_SCHEDULE
         bool "Kick cores with IPIs on scheduling events"
         default n
@@ -894,6 +885,16 @@ menu Debugging
       help
         This will enable runtime assert statements. If this is
         disabled, they will not be generated
+
+
+
+    config NESTED_IRQ_DEBUG
+			bool "Enable debugging of (nested) irqs"
+			default false
+			depends on FPU_SAVE
+			help
+				Will do some extra logic at each irq to debug FPU usage within the
+				kernel and possibly eagerly/lazily save FPU state.
 
     config PROVENANCE
       bool "Enable Runtime Provenance Information"
