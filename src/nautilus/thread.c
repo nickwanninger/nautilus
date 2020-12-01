@@ -1239,37 +1239,41 @@ nk_tls_test (void)
 }
 
 #ifdef NAUT_CONFIG_NESTED_IRQ_DEBUG
-
+#define FPU_STATE_SIZE (4096)
 void nk_thread_push_irq_frame(struct thread_debug_fpu_frame *frame) {
 	ASSERT(sizeof(struct thread_debug_fpu_frame) == 48);
 
-	memset(frame, 0, sizeof(*frame));
-	nk_thread_t *t = get_cur_thread();
 
+	nk_thread_t *t = get_cur_thread();
 	ulong_t cr0 = read_cr0();
 
-	bool fpu_was_enabled = (cr0 & CR0_TS) != 0;
-
-	// zero out the state and add it onto the stack
-	frame->state = NULL;
 	frame->prev = t->irq_fpu_stack;
+	frame->old_cr0 = cr0;
+	// allocate a buffer for the FPU state
+	frame->state = kmem_malloc(FPU_STATE_SIZE);
+	ASSERT(frame->state != NULL);
+	asm volatile("fxsave64 (%0);" ::"r"(frame->state));
+
+
+	float x = 4.5 * 6.7;
+	(void)x;
+
+	// "append" the fpu state onto the stack in the thread.
 	t->irq_fpu_stack = frame;
-
-	return;
-
-	// disable floating point
-	cr0 |= CR0_TS;
-	write_cr0(cr0);
 }
 
 void nk_thread_pop_irq_frame(void) {
 	nk_thread_t *t = get_cur_thread();
 
 	struct thread_debug_fpu_frame *f = t->irq_fpu_stack;
-	// Pop the entry off the list
-	t->irq_fpu_stack = f->prev;
-	if (f->state != NULL) {
-		printk("state is not null! %p\n", f->state);
+	if (f != NULL) {
+		// Pop the entry off the list
+		t->irq_fpu_stack = f->prev;
+		if (f->state != NULL) {
+			asm volatile("fxrstor64 (%0);" ::"r"(f->state));
+			kmem_free(f->state);
+			f->state = NULL;
+		}
 	}
 }
 #endif

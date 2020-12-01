@@ -273,7 +273,7 @@ put_cur_thread (nk_thread_t * t)
 struct thread_debug_fpu_frame {
 	struct thread_debug_fpu_frame *prev;
 	void *state;
-	uint64_t reserved1;
+	uint64_t old_cr0;
 	uint64_t reserved2;
 	uint64_t reserved3;
 	uint64_t reserved4;
