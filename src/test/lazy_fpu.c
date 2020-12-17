@@ -56,7 +56,7 @@ void print_array(char * array_name, float * array, int size) {
     {
         nk_vc_printf("%f ", array[i]);
     }
-    printf("}\n");
+    nk_vc_printf("}\n");
 }
 
 void test_AVX(float * result, float * inp1, float * inp2, int number_of_elements) {
