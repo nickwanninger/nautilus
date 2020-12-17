@@ -7,6 +7,7 @@ obj-y += tasks.o
 obj-y += futures.o
 obj-y += bsp.o
 obj-y += net_udp_echo.o
+obj-y += lazy_fpu.o 
 obj-y += test.o
 
 obj-$(NAUT_CONFIG_PROVENANCE) += provenance.o
