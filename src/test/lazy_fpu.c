@@ -32,6 +32,8 @@
 #endif
 
 #define ARRAY_SIZE 32 
+// Duration in nano seconds 
+#define NANOSECONDS 1000000000ULL
 
 void init_array(float * i1, float * i2, float * res, int size)
 {
@@ -57,6 +59,21 @@ void print_array(char * array_name, float * array, int size) {
         nk_vc_printf("%f ", array[i]);
     }
     nk_vc_printf("}\n");
+}
+void check_array(char * tname, float * result, float * inp1, 
+                 float * inp2, int size) {
+  bool_t check = true;
+    for (int i = 0; i < size; i++)
+    {
+      if (result[i] != (inp1[i] + inp2[i]))
+          check = false;
+    }
+    if (!check) {
+      nk_vc_printf("%s failed \n", tname);
+      print_array("I1", inp1, size);
+      print_array("I2", inp2, size);
+      print_array("Result", result, size);
+    }
 }
 
 void test_AVX(float * result, float * inp1, float * inp2, int number_of_elements) {
@@ -148,22 +165,37 @@ void benchmark(char *name, void (*test)(float *, float *, float *, int), int arr
     //Initialization of float arrays
     init_array(input1, input2, result, array_length);
 
-    print_array("I1", input1, array_length);
-    print_array("I2", input2, array_length);
-
     test(result, input1, input2, array_length);
 
-    print_array(name, result, array_length);
+    check_array(name, result, input1, input2, array_length);
 
     destroy_array(input1, input2, result);
 }
 
-static int handle_lazy_fpu()
+int parse_args(char * buf) {
+  //DEFAULT
+  int time_sec = 5;
+
+  if (sscanf(buf,"lfpu %lu", &time_sec) == 1) {
+    nk_vc_printf("Running FPU tests for %d seconds\n", time_sec);
+    return time_sec;
+  }
+
+  nk_vc_printf("Default 5 seconds\n");
+  return time_sec;
+}
+static int handle_lazy_fpu(char * buf, void * pvt)
 {
-    benchmark("X87",  &test_X87,  ARRAY_SIZE);
-    benchmark("SSE",  &test_SSE,  ARRAY_SIZE);
-    benchmark("AVX",  &test_AVX,  ARRAY_SIZE);
-    benchmark("AVX2", &test_AVX2, ARRAY_SIZE);
+  uint64_t duration = parse_args(buf) * NANOSECONDS;
+#if 1
+    uint64_t end = nk_sched_get_realtime() + duration;
+    while (nk_sched_get_realtime() < end) {
+      benchmark("X87",  &test_X87,  ARRAY_SIZE);
+      benchmark("SSE",  &test_SSE,  ARRAY_SIZE);
+      //benchmark("AVX",  &test_AVX,  ARRAY_SIZE);
+      //benchmark("AVX2", &test_AVX2, ARRAY_SIZE);
+    }
+#endif
 
     return 0;
 }
