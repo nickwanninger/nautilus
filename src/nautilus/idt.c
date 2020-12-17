@@ -222,6 +222,8 @@ df_handler (excp_entry_t * excp,
 
 
 #ifdef NAUT_CONFIG_NESTED_IRQ_DEBUG
+
+extern uint64_t count_fpu_state_alloc;
 static int
 nm_handler (excp_entry_t * excp,
             excp_vec_t vector,
@@ -234,9 +236,15 @@ nm_handler (excp_entry_t * excp,
 
 	nk_thread_t *t = get_cur_thread();
 	struct thread_debug_fpu_frame *frame = t->irq_fpu_stack;
+
+	// printk("[FPU] Kernel used FPU at %p. Saving previous state.\n", excp->rip);
+
 	if (frame != NULL) {
+		/* TODO: deduplicate and hide behind a flag. */
+		
 		/* save the FPU state into a buffer in the frame */
 		frame->state = kmem_malloc(4096);
+		count_fpu_state_alloc++;
 		/* Save into the buffer */
 		asm volatile("fxsave64 (%0);" ::"r"(frame->state));
 	}

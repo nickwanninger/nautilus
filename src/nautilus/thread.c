@@ -1239,7 +1239,9 @@ nk_tls_test (void)
 }
 
 
+uint64_t count_fpu_state_alloc = 0;
 #ifdef NAUT_CONFIG_NESTED_IRQ_DEBUG
+
 #define FPU_STATE_SIZE (4096)
 void nk_thread_push_irq_frame(struct thread_debug_fpu_frame *frame) {
 	ASSERT(sizeof(struct thread_debug_fpu_frame) == 48);
@@ -1251,18 +1253,22 @@ void nk_thread_push_irq_frame(struct thread_debug_fpu_frame *frame) {
 	frame->prev = t->irq_fpu_stack;
 	frame->old_cr0 = cr0;
 	frame->state = NULL;
-	// allocate a buffer for the FPU state
-	// frame->state = kmem_malloc(FPU_STATE_SIZE);
-	// ASSERT(frame->state != NULL);
-	// asm volatile("fxsave64 (%0);" ::"r"(frame->state));
 
-	// "append" the fpu state onto the stack in the thread.
-	t->irq_fpu_stack = frame;
-
+#ifdef NAUT_CONFIG_NESTED_IRQ_DEBUG_LAZY
 	/* Disable floating point for now... Re-enabled upon
 	 * use or in the pop_irq_frame function
 	 */
 	write_cr0(read_cr0() | CR0_TS);
+#else
+	// allocate a buffer for the FPU state
+	frame->state = kmem_malloc(FPU_STATE_SIZE);
+	count_fpu_state_alloc++;
+	ASSERT(frame->state != NULL);
+	asm volatile("fxsave64 (%0);" ::"r"(frame->state));
+#endif
+	// "append" the fpu state onto the stack in the thread.
+	t->irq_fpu_stack = frame;
+
 }
 
 

@@ -890,11 +890,18 @@ menu Debugging
 
     config NESTED_IRQ_DEBUG
 			bool "Enable debugging of (nested) irqs"
-			default false
+			default n
 			depends on FPU_SAVE
 			help
 				Will do some extra logic at each irq to debug FPU usage within the
 				kernel and possibly eagerly/lazily save FPU state.
+
+		config NESTED_IRQ_DEBUG_LAZY
+			bool "Enable lazy fpu debug as (opposed to eager)"
+			default y
+			depends on NESTED_IRQ_DEBUG
+			help
+				When saving the FPU on each IRQ, be lazy?
 
     config PROVENANCE
       bool "Enable Runtime Provenance Information"
