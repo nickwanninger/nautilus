@@ -304,6 +304,7 @@ skip_per_cpu_update1:
 		popq %r8
 	.skip_irq_save:
 		pushq %rsi # the handler function can modify RSI
+		           # and we need it for the NM_EXCP check later on
 #endif
 
     callq *%r8   # rdi = exp struct, rsi = irq num, rdx = state
