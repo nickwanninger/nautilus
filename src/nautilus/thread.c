@@ -1250,10 +1250,11 @@ void nk_thread_push_irq_frame(struct thread_debug_fpu_frame *frame) {
 
 	frame->prev = t->irq_fpu_stack;
 	frame->old_cr0 = cr0;
+	frame->state = NULL;
 	// allocate a buffer for the FPU state
-	frame->state = kmem_malloc(FPU_STATE_SIZE);
-	ASSERT(frame->state != NULL);
-	asm volatile("fxsave64 (%0);" ::"r"(frame->state));
+	// frame->state = kmem_malloc(FPU_STATE_SIZE);
+	// ASSERT(frame->state != NULL);
+	// asm volatile("fxsave64 (%0);" ::"r"(frame->state));
 
 	// "append" the fpu state onto the stack in the thread.
 	t->irq_fpu_stack = frame;

@@ -232,7 +232,15 @@ nm_handler (excp_entry_t * excp,
 	cr0 &= ~CR0_TS;
 	write_cr0(cr0);
 
-	printk("Kernel is using the FPU at %p!\n", excp->rip);
+	nk_thread_t *t = get_cur_thread();
+	struct thread_debug_fpu_frame *frame = t->irq_fpu_stack;
+	if (frame != NULL) {
+		/* save the FPU state into a buffer in the frame */
+		frame->state = kmem_malloc(4096);
+		/* Save into the buffer */
+		asm volatile("fxsave64 (%0);" ::"r"(frame->state));
+	}
+
   return 0;
 }
 #endif
