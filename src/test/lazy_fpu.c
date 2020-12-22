@@ -22,11 +22,15 @@
  */
 
 /* This test only makes sense if the FPU_IRQ_SAVE is on */
-#ifdef NAUT_CONFIG_FPU_IRQ_SAVE
+#include <nautilus/naut_types.h>
+#include <nautilus/math.h>
+#include <nautilus/nautilus.h>
+#include <nautilus/random.h>
+#include <nautilus/shell.h>
+
 
 #include <nautilus/fpu_irq.h>
-#include <nautilus/nautilus.h>
-#include <nautilus/shell.h>
+// #include "gomptestdata.h"
 
 #define DO_PRINT 0
 
@@ -212,7 +216,10 @@ int parse_args(char *buf) {
 }
 
 static int handle_lazy_fpu(char *buf, void *pvt) {
-  nk_fpu_irq_begin_session();
+
+#ifdef NAUT_CONFIG_FPU_IRQ_SAVE
+	nk_fpu_irq_begin_session();
+#endif
   /* reset this metric */
   uint64_t duration = parse_args(buf) * NANOSECONDS;
   uint64_t end = nk_sched_get_realtime() + duration;
@@ -233,10 +240,12 @@ static int handle_lazy_fpu(char *buf, void *pvt) {
   lazy = 1;
 #endif
 
+#ifdef NAUT_CONFIG_FPU_IRQ_SAVE
   nk_fpu_irq_session_t *session = nk_fpu_irq_end_session();
 
   nk_dump_fpu_irq_session(session);
   nk_free_fpu_irq_session(session);
+#endif
 
   /*
 nk_vc_printf("[%s] %llu failed of %llu. (%f%%) fpu states allocated: %llu\n",
@@ -254,9 +263,10 @@ static struct shell_cmd_impl lazy_fpu_tests = {
 };
 nk_register_shell_cmd(lazy_fpu_tests);
 
-
 static int handle_ipifpu(char *buf, void *pvt) {
-  nk_fpu_irq_begin_session();
+#ifdef NAUT_CONFIG_FPU_IRQ_SAVE
+	nk_fpu_irq_begin_session();
+#endif
   /* reset this metric */
   uint64_t duration = parse_args(buf) * NANOSECONDS;
   uint64_t end = nk_sched_get_realtime() + duration;
@@ -267,9 +277,12 @@ static int handle_ipifpu(char *buf, void *pvt) {
     failed += benchmark("SSE", &test_SSE, ARRAY_SIZE);
   }
 
+#ifdef NAUT_CONFIG_FPU_IRQ_SAVE
   nk_fpu_irq_session_t *session = nk_fpu_irq_end_session();
+
   nk_dump_fpu_irq_session(session);
   nk_free_fpu_irq_session(session);
+#endif
 
   return 0;
 }
@@ -281,4 +294,176 @@ static struct shell_cmd_impl ipi_fpu_tests = {
 };
 nk_register_shell_cmd(ipi_fpu_tests);
 
-#endif
+
+/*
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ * */
+
+#define ERROR(fmt, args...) ERROR_PRINT("omptest: " fmt, ##args)
+#define DEBUG(fmt, args...) DEBUG_PRINT("omptest: " fmt, ##args)
+#define INFO(fmt, args...) INFO_PRINT("omptest: " fmt, ##args)
+
+#define ALLOC(size)                                  \
+  ({                                                 \
+    void *__fake = malloc(size);                     \
+    if (!__fake) {                                   \
+      ERROR("Failed to allocate %lu bytes\n", size); \
+    }                                                \
+    __fake;                                          \
+  })
+
+static inline uint16_t random() {
+  uint16_t t;
+  nk_get_rand_bytes((uint8_t *)&t, sizeof(t));
+  return t;
+}
+
+#define MAXN 5100 /* Max value of N */
+
+// static int N;  /* Matrix size */
+#define N 1000
+static int seed;
+
+static void serialgauss(float **ORA, float *ORB, float *X) {
+  /* Solve for x in Ax = B */
+  int norm, row, col;
+  float multiplier;
+
+  float **A = malloc(N * sizeof(float *));
+  for (int i = 0; i < N; i++) {
+    A[i] = malloc(N * sizeof(float));
+    memcpy(A[i], ORA[i], N * sizeof(float));
+  }
+  float *B = malloc(N * sizeof(float));
+  memcpy(B, ORB, N * sizeof(float));
+
+  /* Gaussian elimination */
+  for (norm = 0; norm < N - 1; norm++) {
+    for (row = norm + 1; row < N; row++) {
+      multiplier = A[row][norm] / A[norm][norm];
+      for (col = norm; col < N; col++) A[row][col] -= A[norm][col] * multiplier;
+      B[row] -= B[norm] * multiplier;
+    }
+  }
+  /* (Diagonal elements are not normalized to 1.  This is treated in back
+   * substitution.)
+   */
+  /* Back substitution */
+  for (row = N - 1; row >= 0; row--) {
+    X[row] = B[row];
+    for (col = N - 1; col > row; col--) {
+      X[row] -= A[row][col] * X[col];
+    }
+    X[row] /= A[row][row];
+  }
+
+  /* Free the working copy of the inputs */
+  for (int i = 0; i < N; i++) {
+    free(A[i]);
+  }
+  free(A);
+  free(B);
+}
+
+void print_vector(float *x) {
+  nk_vc_printf("{ ");
+  for (int i = 0; i < N; i++) {
+    nk_vc_printf("%2.2f ", x[i]);
+  }
+  nk_vc_printf("}\n");
+}
+
+
+void print_matrix(float **A) {
+	for (int i = 0; i < N; i++) {
+		print_vector(A[i]);
+	}
+	nk_vc_printf("\n");
+}
+#define TIME() (double)nk_sched_get_realtime();
+static int handle_omptest(char *buf, void *priv) {
+	nk_vc_printf("TEST\n");
+  int seed, size, np;
+
+  float **A = malloc(N * sizeof(float *));
+  float *B = malloc(N * sizeof(float));
+  for (int i = 0; i < N; i++) {
+    A[i] = malloc(N * sizeof(float));
+    for (int j = 0; j < N; j++) {
+      A[i][j] = random() / 32768.0;
+    }
+    B[i] = random() / 32768.0;
+  }
+
+  float *x1 = malloc(N * sizeof(float *));
+  float *x2 = malloc(N * sizeof(float *));
+
+	nk_vc_printf("Test 1...");
+  serialgauss(A, B, x1);
+	nk_vc_printf("Done.\n");
+
+	/*
+	print_matrix(A);
+	print_vector(x1);
+	nk_vc_printf("=\n");
+	print_vector(B);
+	*/
+
+	nk_vc_printf("Test 2...");
+  serialgauss(A, B, x2);
+	nk_vc_printf("Done.\n");
+
+	/*
+	print_matrix(A);
+	print_vector(x2);
+	nk_vc_printf("=\n");
+	print_vector(B);
+	*/
+
+  float total_diff = 0;
+  for (int i = 0; i < N; i++) {
+    if (x1[i] != x2[i]) {
+			nk_vc_printf("INVALID!\n");
+		}
+  }
+
+  free(x1);
+  free(x2);
+
+  for (int i = 0; i < N; i++) {
+    free(A[i]);
+  }
+  free(A);
+  free(B);
+  return 0;
+}
+
+static struct shell_cmd_impl omptest_impl = {
+    .cmd = "omptest",
+    .help_str = "omptest seed size np (openmp Gaussian elimination test)",
+    .handler = handle_omptest,
+};
+nk_register_shell_cmd(omptest_impl);
+
