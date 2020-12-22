@@ -888,20 +888,30 @@ menu Debugging
 
 
 
-    config NESTED_IRQ_DEBUG
-			bool "Enable debugging of (nested) irqs"
+    config FPU_IRQ_SAVE
+			bool "Enable floating point IRQ saving"
 			default n
 			depends on FPU_SAVE
 			help
 				Will do some extra logic at each irq to debug FPU usage within the
-				kernel and possibly eagerly/lazily save FPU state.
+				kernel and eagerly/lazily save FPU state. The default is to eagerly save.
 
-		config NESTED_IRQ_DEBUG_LAZY
-			bool "Enable lazy fpu debug as (opposed to eager)"
+		config FPU_IRQ_SAVE_RECORD
+			bool "Record where the kernel uses the FPU in IRQs"
 			default y
-			depends on NESTED_IRQ_DEBUG
+			depends on FPU_IRQ_SAVE
 			help
-				When saving the FPU on each IRQ, be lazy?
+				Record an address histogram of FPU usages when the kernel uses the FPU
+				in an IRQ handler or the scheduler. This incurs the added cost of disabling
+				floating point and handling the NM_EXCP trap, but does not imply a lazy fpu
+				saving policy.
+
+		config FPU_IRQ_SAVE_LAZY
+			bool "Enable lazy fpu debug as (opposed to eager)"
+			default n
+			depends on FPU_IRQ_SAVE
+			help
+				Change the IRQ FPU save policy to lazy.
 
     config PROVENANCE
       bool "Enable Runtime Provenance Information"

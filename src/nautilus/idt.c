@@ -37,6 +37,10 @@
 #include <nautilus/monitor.h>
 #endif
 
+#ifdef NAUT_CONFIG_FPU_IRQ_SAVE
+#include <nautilus/fpu_irq.h>
+#endif
+
 extern ulong_t idt_handler_table[NUM_IDT_ENTRIES];
 extern ulong_t idt_state_table[NUM_IDT_ENTRIES]; 
 
@@ -221,30 +225,26 @@ df_handler (excp_entry_t * excp,
 }
 
 
-#ifdef NAUT_CONFIG_NESTED_IRQ_DEBUG
+#ifdef NAUT_CONFIG_FPU_IRQ_SAVE
 
-extern uint64_t count_fpu_state_alloc;
 static int
 nm_handler (excp_entry_t * excp,
             excp_vec_t vector,
             addr_t unused)
 {
 	// reenable the FPU
-	ulong_t cr0 = read_cr0();
-	cr0 &= ~CR0_TS;
-	write_cr0(cr0);
+	write_cr0(read_cr0() & ~CR0_TS);
 
 	nk_thread_t *t = get_cur_thread();
 	struct thread_debug_fpu_frame *frame = t->irq_fpu_stack;
 
-	// printk("[FPU] Kernel used FPU at %p. Saving previous state.\n", excp->rip);
+#ifdef NAUT_CONFIG_FPU_IRQ_SAVE_RECORD
+	nk_fpu_irq_record_usage((addr_t)excp->rip);
+#endif
 
 	if (frame != NULL) {
-		/* TODO: deduplicate and hide behind a flag. */
-		
 		/* save the FPU state into a buffer in the frame */
-		frame->state = kmem_malloc(4096);
-		count_fpu_state_alloc++;
+		frame->state = malloc(4096);
 		/* Save into the buffer */
 		asm volatile("fxsave64 (%0);" ::"r"(frame->state));
 	}
@@ -497,12 +497,6 @@ setup_idt (void)
         ERROR_PRINT("Couldn't assign general protection fault handler\n");
         return -1;
     }
-#ifdef NAUT_CONFIG_NESTED_IRQ_DEBUG
-    if (idt_assign_entry(NM_EXCP, (ulong_t)nm_handler, 0) < 0) {
-        ERROR_PRINT("Couldn't assign 'Device not available' fault handler\n");
-        return -1;
-    }
-#endif
     if (idt_assign_entry(DF_EXCP, (ulong_t)df_handler, 0) < 0) {
         ERROR_PRINT("Couldn't assign double fault handler\n");
         return -1;
@@ -523,6 +517,13 @@ setup_idt (void)
 #if defined(NAUT_CONFIG_ENABLE_MONITOR) || defined(NAUT_CONFIG_WATCHDOG)
     if (idt_assign_entry(NMI_INT, (ulong_t)nmi_handler, 0) < 0) {
         ERROR_PRINT("Couldn't assign NMI handler\n");
+        return -1;
+    }
+#endif
+
+#ifdef NAUT_CONFIG_FPU_IRQ_SAVE
+    if (idt_assign_entry(NM_EXCP, (ulong_t)nm_handler, 0) < 0) {
+        ERROR_PRINT("Couldn't assign 'Device not available' fault handler\n");
         return -1;
     }
 #endif

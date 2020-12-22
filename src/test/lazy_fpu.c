@@ -21,6 +21,10 @@
  * redistribute, and modify it as specified in the file "LICENSE.txt".
  */
 
+/* This test only makes sense if the FPU_IRQ_SAVE is on */
+#ifdef NAUT_CONFIG_FPU_IRQ_SAVE
+
+#include <nautilus/fpu_irq.h>
 #include <nautilus/nautilus.h>
 #include <nautilus/shell.h>
 
@@ -207,11 +211,9 @@ int parse_args(char *buf) {
   return time_sec;
 }
 
-extern uint64_t count_fpu_state_alloc;
-
 static int handle_lazy_fpu(char *buf, void *pvt) {
+  nk_fpu_irq_begin_session();
   /* reset this metric */
-  count_fpu_state_alloc = 0;
   uint64_t duration = parse_args(buf) * NANOSECONDS;
   uint64_t end = nk_sched_get_realtime() + duration;
   uint64_t count = 0;
@@ -227,13 +229,20 @@ static int handle_lazy_fpu(char *buf, void *pvt) {
   }
 
   int lazy = 0;
-#ifdef NAUT_CONFIG_NESTED_IRQ_DEBUG_LAZY
+#ifdef NAUT_CONFIG_FPU_IRQ_SAVE_LAZY
   lazy = 1;
 #endif
 
-  nk_vc_printf("[%s] %llu failed of %llu. (%f%%) fpu states allocated: %llu\n",
-	       lazy ? "lazy" : "eager", failed, count,
-	       (float)failed / (float)count, count_fpu_state_alloc);
+  nk_fpu_irq_session_t *session = nk_fpu_irq_end_session();
+
+  nk_dump_fpu_irq_session(session);
+  nk_free_fpu_irq_session(session);
+
+  /*
+nk_vc_printf("[%s] %llu failed of %llu. (%f%%) fpu states allocated: %llu\n",
+	 lazy ? "lazy" : "eager", failed, count,
+	 (float)failed / (float)count, count_fpu_state_alloc);
+			   */
 
   return 0;
 }
@@ -244,3 +253,32 @@ static struct shell_cmd_impl lazy_fpu_tests = {
     .handler = handle_lazy_fpu,
 };
 nk_register_shell_cmd(lazy_fpu_tests);
+
+
+static int handle_ipifpu(char *buf, void *pvt) {
+  nk_fpu_irq_begin_session();
+  /* reset this metric */
+  uint64_t duration = parse_args(buf) * NANOSECONDS;
+  uint64_t end = nk_sched_get_realtime() + duration;
+  uint64_t count = 0;
+  uint64_t failed = 0;
+  while (nk_sched_get_realtime() < end) {
+    count++;
+    failed += benchmark("SSE", &test_SSE, ARRAY_SIZE);
+  }
+
+  nk_fpu_irq_session_t *session = nk_fpu_irq_end_session();
+  nk_dump_fpu_irq_session(session);
+  nk_free_fpu_irq_session(session);
+
+  return 0;
+}
+
+static struct shell_cmd_impl ipi_fpu_tests = {
+    .cmd = "ipifpu",
+    .help_str = "ipifpu t",
+    .handler = handle_ipifpu,
+};
+nk_register_shell_cmd(ipi_fpu_tests);
+
+#endif
