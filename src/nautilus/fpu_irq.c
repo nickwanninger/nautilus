@@ -75,7 +75,7 @@ void nk_dump_fpu_irq_session(nk_fpu_irq_session_t *session) {
 
 	const char *type = "eager";
 #ifdef NAUT_CONFIG_FPU_IRQ_SAVE_LAZY
-	type = "lazy"
+	type = "lazy";
 #endif
 
 	nk_vc_printf("======= FPU IRQ Session Dump: ======= (%s saving)\n", type);
