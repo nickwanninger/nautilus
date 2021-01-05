@@ -42,6 +42,7 @@ struct nk_fpu_irq_session {
 	struct nk_hashtable *histogram;
 };
 typedef struct nk_fpu_irq_session nk_fpu_irq_session_t;
+
 /* Print an irq session to the virtual console */
 void nk_dump_fpu_irq_session(nk_fpu_irq_session_t *session);
 void nk_free_fpu_irq_session(nk_fpu_irq_session_t *session);

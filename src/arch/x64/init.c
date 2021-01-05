@@ -174,6 +174,11 @@
 #endif
 
 
+#ifdef NAUT_CONFIG_FPU_IRQ_SAVE
+#include <nautilus/fpu_irq.h>
+#endif
+
+
 extern spinlock_t printk_lock;
 
 
@@ -573,6 +578,10 @@ init (unsigned long mbd,
     nk_watchdog_init(NAUT_CONFIG_WATCHDOG_DEFAULT_TIME_MS * 1000000UL);
 #endif
 
+#ifdef NAUT_CONFIG_FPU_IRQ_SAVE
+		/* Initialize the pre-allocated global array of FPU state buffers. */
+		nk_fpu_irq_init();
+#endif
     
     nk_launch_shell("root-shell",0,0,0);
 
