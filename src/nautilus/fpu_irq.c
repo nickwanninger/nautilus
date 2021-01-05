@@ -148,12 +148,12 @@ nk_fpu_irq_session_t *nk_fpu_irq_end_session(void) {
 }
 
 
-
+#define NOOPT __attribute__((optnone))
 
 
 
 #define FPU_STATE_SIZE (4096)
-void nk_thread_push_irq_frame(struct thread_debug_fpu_frame *frame) {
+void nk_thread_push_irq_frame(struct thread_debug_fpu_frame *frame) NOOPT {
 	ASSERT(sizeof(struct thread_debug_fpu_frame) == 48);
 
 
@@ -184,7 +184,7 @@ void nk_thread_push_irq_frame(struct thread_debug_fpu_frame *frame) {
 }
 
 
-void nk_thread_pop_irq_frame(void) {
+void nk_thread_pop_irq_frame(void) NOOPT {
 	nk_thread_t *t = get_cur_thread();
 
 	struct thread_debug_fpu_frame *f = t->irq_fpu_stack;
@@ -202,8 +202,35 @@ void nk_thread_pop_irq_frame(void) {
 	}
 }
 
+#ifdef NAUT_CONFIG_FPU_IRQ_SAVE
 
-int nk_thread_fpu_irq_save_trampoline(excp_entry_t *excp, int irq, void *state, int (*handler)(excp_entry_t *, excp_vec_t, void *)) {
+int nk_fpu_irq_nm_handler (excp_entry_t * excp,
+            excp_vec_t vector,
+            addr_t unused) NOOPT {
+	// reenable the FPU
+	write_cr0(read_cr0() & ~CR0_TS);
+
+	nk_thread_t *t = get_cur_thread();
+	struct thread_debug_fpu_frame *frame = t->irq_fpu_stack;
+
+#ifdef NAUT_CONFIG_FPU_IRQ_SAVE_RECORD
+	nk_fpu_irq_record_usage((addr_t)excp->rip);
+#endif
+
+	if (frame != NULL) {
+		/* save the FPU state into a buffer in the frame */
+		frame->state = malloc(4096);
+		/* Save into the buffer */
+		asm volatile("fxsave64 (%0);" ::"r"(frame->state));
+	}
+
+  return 0;
+}
+#endif
+
+
+
+int nk_thread_fpu_irq_save_trampoline(excp_entry_t *excp, int irq, void *state, int (*handler)(excp_entry_t *, excp_vec_t, void *)) NOOPT {
 	struct thread_debug_fpu_frame f;
 
 	nk_thread_push_irq_frame(&f);
@@ -212,7 +239,7 @@ int nk_thread_fpu_irq_save_trampoline(excp_entry_t *excp, int irq, void *state, 
 	return res;
 }
 
-struct nk_thread *nk_thread_fpu_irq_need_resched(void) {
+struct nk_thread *nk_thread_fpu_irq_need_resched(void) NOOPT {
 	struct thread_debug_fpu_frame f;
 	nk_thread_push_irq_frame(&f);
 	struct nk_thread *t = nk_sched_need_resched();

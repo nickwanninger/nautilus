@@ -226,31 +226,8 @@ df_handler (excp_entry_t * excp,
 
 
 #ifdef NAUT_CONFIG_FPU_IRQ_SAVE
-
-static int
-nm_handler (excp_entry_t * excp,
-            excp_vec_t vector,
-            addr_t unused)
-{
-	// reenable the FPU
-	write_cr0(read_cr0() & ~CR0_TS);
-
-	nk_thread_t *t = get_cur_thread();
-	struct thread_debug_fpu_frame *frame = t->irq_fpu_stack;
-
-#ifdef NAUT_CONFIG_FPU_IRQ_SAVE_RECORD
-	nk_fpu_irq_record_usage((addr_t)excp->rip);
-#endif
-
-	if (frame != NULL) {
-		/* save the FPU state into a buffer in the frame */
-		frame->state = malloc(4096);
-		/* Save into the buffer */
-		asm volatile("fxsave64 (%0);" ::"r"(frame->state));
-	}
-
-  return 0;
-}
+int nk_fpu_irq_nm_handler (excp_entry_t * excp, excp_vec_t vector,
+            addr_t unused);
 #endif
 
 
@@ -522,7 +499,7 @@ setup_idt (void)
 #endif
 
 #ifdef NAUT_CONFIG_FPU_IRQ_SAVE
-    if (idt_assign_entry(NM_EXCP, (ulong_t)nm_handler, 0) < 0) {
+    if (idt_assign_entry(NM_EXCP, (ulong_t)nk_fpu_irq_nm_handler, 0) < 0) {
         ERROR_PRINT("Couldn't assign 'Device not available' fault handler\n");
         return -1;
     }
