@@ -25,6 +25,7 @@
 #include <nautilus/idt.h>
 #include <nautilus/mm.h>
 #include <nautilus/scheduler.h>
+#include <nautilus/thread.h>
 #include <nautilus/spinlock.h>
 #include <nautilus/vc.h>
 #ifdef NAUT_CONFIG_PROVENANCE
@@ -43,7 +44,7 @@ static int nm_hash_eq_fn(addr_t key1, addr_t key2) { return key1 == key2; }
 static spinlock_t session_lock = 0;
 static nk_fpu_irq_session_t *current_session = NULL;
 
-#define FPU_STATE_SIZE (4096)
+#define FPU_STATE_SIZE (FPSTATE_SIZE)
 #define FPU_BUFFERS_COUNT (32)
 static spinlock_t fpu_buffers_lock = 0;
 static struct {
