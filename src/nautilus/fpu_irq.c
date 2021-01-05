@@ -71,6 +71,8 @@ static void *NOOPT get_fpu_buffer(void) {
     }
   }
 
+  if (buf == NULL) panic("No fpu buffer available");
+  
   spin_unlock_irq_restore(&fpu_buffers_lock, flags);
 
   return buf;
@@ -260,7 +262,8 @@ int NOOPT nk_fpu_irq_nm_handler(excp_entry_t *excp, excp_vec_t vector,
 
   if (frame != NULL) {
     /* save the FPU state into a buffer in the frame */
-    frame->state = get_fpu_buffer();
+    if (frame->state == NULL)
+      frame->state = get_fpu_buffer();
     /* Save into the buffer */
     asm volatile("fxsave64 (%0);" ::"r"(frame->state));
   }

@@ -57,6 +57,9 @@ int nk_fpu_irq_resume_session(nk_fpu_irq_session_t *session);
 void nk_fpu_irq_record_usage(addr_t ip);
 
 
+void nk_fpu_irq_init(void);
+
+
 #endif
 
 #endif
