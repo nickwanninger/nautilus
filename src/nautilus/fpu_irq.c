@@ -49,7 +49,7 @@ static spinlock_t fpu_buffers_lock = 0;
 static struct {
   long uses;
   void *page;
-} fpu_buffers[FPU_BUFFERS_COUNT];
+} fpu_buffers[NAUT_CONFIG_FPU_IRQ_SAVE_BUFFER_COUNT];
 
 void nk_fpu_irq_init(void) {
   for (int i = 0; i < FPU_BUFFERS_COUNT; i++) {

@@ -913,6 +913,14 @@ menu Debugging
 			help
 				Change the IRQ FPU save policy to lazy.
 
+		config FPU_IRQ_SAVE_BUFFER_COUNT
+			int "Pre-allocated FPU buffer count"
+			default 32
+			depends on FPU_IRQ_SAVE
+			help
+				How many pages to pre-allocate to store FPU states in.
+
+
     config PROVENANCE
       bool "Enable Runtime Provenance Information"
       default n
