@@ -45,7 +45,7 @@ static spinlock_t session_lock = 0;
 static nk_fpu_irq_session_t *current_session = NULL;
 
 #define FPU_STATE_SIZE (FPSTATE_SIZE)
-#define FPU_BUFFERS_COUNT (32)
+#define FPU_BUFFERS_COUNT (NAUT_CONFIG_FPU_IRQ_SAVE_BUFFER_COUNT)
 static spinlock_t fpu_buffers_lock = 0;
 static struct {
   long uses;
@@ -62,7 +62,6 @@ void nk_fpu_irq_init(void) {
 static void *NOOPT get_fpu_buffer(void) {
   uint8_t flags = spin_lock_irq_save(&fpu_buffers_lock);
   void *buf = NULL;
-
   for (int i = 0; i < FPU_BUFFERS_COUNT; i++) {
     if (fpu_buffers[i].page != NULL) {
       buf = fpu_buffers[i].page;

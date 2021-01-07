@@ -375,6 +375,8 @@ init (unsigned long mbd,
      * allocated in the boot mem allocator are kept reserved */
     mm_boot_kmem_init();
 
+
+
 #ifdef NAUT_CONFIG_ASPACES
     nk_aspace_init();
 #endif
@@ -421,6 +423,11 @@ init (unsigned long mbd,
 
 #ifdef NAUT_CONFIG_PROVENANCE
 	nk_prov_init();
+#endif
+
+#ifdef NAUT_CONFIG_FPU_IRQ_SAVE
+		/* Initialize the pre-allocated global array of FPU state buffers. */
+		nk_fpu_irq_init();
 #endif
 
 #ifdef NAUT_CONFIG_CACHEPART
@@ -578,10 +585,6 @@ init (unsigned long mbd,
     nk_watchdog_init(NAUT_CONFIG_WATCHDOG_DEFAULT_TIME_MS * 1000000UL);
 #endif
 
-#ifdef NAUT_CONFIG_FPU_IRQ_SAVE
-		/* Initialize the pre-allocated global array of FPU state buffers. */
-		nk_fpu_irq_init();
-#endif
     
     nk_launch_shell("root-shell",0,0,0);
 
