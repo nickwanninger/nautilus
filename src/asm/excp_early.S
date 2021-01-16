@@ -304,12 +304,14 @@ skip_per_cpu_update1:
 		popq %r8
 	.skip_irq_save:
 		pushq %rsi # the handler function can modify RSI
+		pushq $0 # assure 16 byte stack alignment
 #endif
 
     callq *%r8   # rdi = exp struct, rsi = irq num, rdx = state
 
 #ifdef NAUT_CONFIG_FPU_IRQ_SAVE
 		popq %rsi
+		popq %rsi # pop the 16 bytes off the stack, discarding the first value
 		cmpq $7, %rsi # NM_EXCP
 		je .skip_irq_restore
 

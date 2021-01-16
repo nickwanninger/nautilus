@@ -201,7 +201,7 @@ nk_fpu_irq_session_t *nk_fpu_irq_end_session(void) {
   return session;
 }
 
-#define USE_XSAVE
+// #define USE_XSAVE
 
 #ifdef USE_XSAVE
 static inline NOOPT void xrstor(char *addr, uint64_t mask) {

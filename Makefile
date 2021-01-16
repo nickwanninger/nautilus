@@ -364,7 +364,7 @@ COMMON_FLAGS :=-fno-omit-frame-pointer \
 
 
 ifdef NAUT_CONFIG_USE_GCC
-  COMMON_FLAGS += -O2  -fno-delete-null-pointer-checks
+  COMMON_FLAGS += -O3  -fno-delete-null-pointer-checks
   GCCVERSIONGTE6 := $(shell expr `$(CC) -dumpversion | cut -f1 -d.` \>= 6)
   ifeq "$(GCCVERSIONGTE6)" "1"
     COMMON_FLAGS += -no-pie -fno-pic -fno-PIC -fno-PIE
