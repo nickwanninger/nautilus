@@ -25,8 +25,8 @@
 #include <nautilus/idt.h>
 #include <nautilus/mm.h>
 #include <nautilus/scheduler.h>
-#include <nautilus/thread.h>
 #include <nautilus/spinlock.h>
+#include <nautilus/thread.h>
 #include <nautilus/vc.h>
 #ifdef NAUT_CONFIG_PROVENANCE
 #include <nautilus/provenance.h>
@@ -72,7 +72,7 @@ static void *NOOPT get_fpu_buffer(void) {
   }
 
   if (buf == NULL) panic("No fpu buffer available");
-  
+
   spin_unlock_irq_restore(&fpu_buffers_lock, flags);
 
   return buf;
@@ -201,6 +201,42 @@ nk_fpu_irq_session_t *nk_fpu_irq_end_session(void) {
   return session;
 }
 
+#define USE_XSAVE
+
+#ifdef USE_XSAVE
+static inline NOOPT void xrstor(char *addr, uint64_t mask) {
+  uint32_t low, hi;
+
+  low = mask;
+  hi = mask >> 32;
+  __asm __volatile("xrstor %0" : : "m"(*addr), "a"(low), "d"(hi));
+}
+
+static inline NOOPT void xsave(char *addr, uint64_t mask) {
+  uint32_t low, hi;
+
+  low = mask;
+  hi = mask >> 32;
+  __asm __volatile("xsave %0" : "=m"(*addr) : "a"(low), "d"(hi) : "memory");
+}
+#endif
+
+static void NOOPT save_fpu_state(void *buf) {
+#ifdef USE_XSAVE
+	xsave(buf, ~0);
+#else
+  asm volatile("fxsave64 (%0);" ::"r"(buf));
+#endif
+}
+
+static void NOOPT restore_fpu_state(void *buf) {
+#ifdef USE_XSAVE
+	xrstor(buf, ~0);
+#else
+  asm volatile("fxrstor64 (%0);" ::"r"(buf));
+#endif
+}
+
 void NOOPT nk_thread_push_irq_frame(struct thread_debug_fpu_frame *frame) {
   ASSERT(sizeof(struct thread_debug_fpu_frame) == 48);
 
@@ -215,7 +251,7 @@ void NOOPT nk_thread_push_irq_frame(struct thread_debug_fpu_frame *frame) {
   // allocate a buffer for the FPU state
   frame->state = get_fpu_buffer();
   ASSERT(frame->state != NULL);
-  asm volatile("fxsave64 (%0);" ::"r"(frame->state));
+  save_fpu_state(frame->state);
   /* TODO: maybe re-init? Not sure if we need to worry about state leakage */
 #endif
 
@@ -241,7 +277,7 @@ void NOOPT nk_thread_pop_irq_frame(void) {
     // Pop the entry off the list
     t->irq_fpu_stack = f->prev;
     if (f->state != NULL) {
-      asm volatile("fxrstor64 (%0);" ::"r"(f->state));
+      restore_fpu_state(f->state);
       release_fpu_buffer(f->state);
       f->state = NULL;
     }
@@ -262,10 +298,9 @@ int NOOPT nk_fpu_irq_nm_handler(excp_entry_t *excp, excp_vec_t vector,
 
   if (frame != NULL) {
     /* save the FPU state into a buffer in the frame */
-    if (frame->state == NULL)
-      frame->state = get_fpu_buffer();
+    if (frame->state == NULL) frame->state = get_fpu_buffer();
     /* Save into the buffer */
-    asm volatile("fxsave64 (%0);" ::"r"(frame->state));
+    save_fpu_state(frame->state);
   }
 
   return 0;
